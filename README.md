@@ -1,3 +1,5 @@
+<img width="3418" height="703" alt="image" src="https://github.com/user-attachments/assets/212081a3-49e5-49b2-9cf3-ba0c21b3c759" />
+
 # LogPlatform
 
 > Projeto de estudos pessoais — também utilizado em produção de forma privada.
