@@ -1,0 +1,80 @@
+@baseUrl = http://localhost:3232
+@apiKey = change-me-secret-key
+@logId = 00000000-0000-0000-0000-000000000000
+
+### POST /api/logs — ingest single log
+POST {{baseUrl}}/api/logs
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "userId": "user-123",
+  "level": "info",
+  "message": "User logged in",
+  "body": {"stanza":{"tag":"ack","attrs":{"id":"3EB00851FA40B5427C0EA2","to":"120363418231859477@g.us","class":"receipt","participant":"xxxxx@lid","type":"read"}},"error":{"errno":-104,"code":"ECONNRESET","syscall":"write"},"node":{"tag":"receipt","attrs":{"from":"xxxxx@g.us","type":"read","id":"3EB00851FA40B5427C0EA2","participant":"xxxxx@lid","t":"1779141640"},"content":[{"tag":"list","attrs":{},"content":[{"tag":"item","attrs":{"id":"3EB0FFB7C60F8C25D52544"}},{"tag":"item","attrs":{"id":"3EB0A9F33684A46D89CB4F"}},{"tag":"item","attrs":{"id":"3EB06F8A8B86628F1553E6"}},{"tag":"item","attrs":{"id":"3EB039ED1CC0DBE338BDF2"}}]}]}} ,
+  "service": "auth-service",
+  "metadata": { "env": "production" }
+}
+
+### POST /api/logs — ingest multiple logs
+POST {{baseUrl}}/api/logs
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+[
+  {
+    "userId": "user-123",
+    "level": "error",
+    "message": "Payment failed",
+    "body": { "reason": "insufficient funds" },
+    "service": "payment-service",
+    "metadata": {}
+  },
+  {
+    "userId": "user-456",
+    "level": "warn",
+    "message": "High memory usage",
+    "body": "mem: 92%",
+    "service": "worker",
+    "metadata": {}
+  }
+]
+
+### POST /api/logs — missing API key (should return 401)
+POST {{baseUrl}}/api/logs
+Content-Type: application/json
+
+{
+  "level": "info",
+  "message": "This should fail"
+}
+
+### GET /api/logs — all logs (default pagination)
+GET {{baseUrl}}/api/logs
+
+### GET /api/logs — filter by userId
+GET {{baseUrl}}/api/logs?userId=user-123
+
+### GET /api/logs — filter by level
+GET {{baseUrl}}/api/logs?level=error
+
+### GET /api/logs — filter by service
+GET {{baseUrl}}/api/logs?service=auth-service
+
+### GET /api/logs — full-text search
+GET {{baseUrl}}/api/logs?search=payment
+
+### GET /api/logs — date range filter
+GET {{baseUrl}}/api/logs?from=2026-05-01T00:00:00Z&to=2026-05-19T23:59:59Z
+
+### GET /api/logs — paginated
+GET {{baseUrl}}/api/logs?page=2&limit=10
+
+### GET /api/logs — combined filters
+GET {{baseUrl}}/api/logs?userId=user-123&level=error&service=payment-service&page=1&limit=20
+
+### GET /api/logs/:id — fetch single log by UUID
+GET {{baseUrl}}/api/logs/{{logId}}
+
+### GET /api/stats — aggregated statistics
+GET {{baseUrl}}/api/stats

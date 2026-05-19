@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LogPlatform</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #080b10;
+    --surface:   #0e1420;
+    --border:    #1e2940;
+    --border-2:  #2a3a55;
+    --accent:    #f59e0b;
+    --accent-dim:#7c5107;
+    --text:      #c9d1e3;
+    --text-dim:  #4e5d7a;
+    --text-muted:#2e3a52;
+    --green:     #22c55e;
+    --red:       #ef4444;
+    --yellow:    #eab308;
+    --blue:      #3b82f6;
+    --cyan:      #06b6d4;
+    --purple:    #a855f7;
+    --mono:      'JetBrains Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow-x: hidden; }
+
+  /* ── SCANLINE EFFECT ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.05) 2px, rgba(0,0,0,.05) 4px);
+    pointer-events: none; z-index: 9999;
+  }
+
+  /* ── LAYOUT ── */
+  .shell { display: flex; flex-direction: column; height: 100vh; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex; align-items: center; gap: 20px;
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--sans); font-weight: 800; font-size: 18px; letter-spacing: -.5px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--accent); display: grid; place-items: center;
+  }
+  .logo-icon svg { width: 18px; height: 18px; }
+  .logo span { color: var(--accent); }
+
+  .header-stats {
+    display: flex; gap: 20px; margin-left: auto;
+  }
+  .stat-pill {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .5px;
+    padding: 4px 10px; border-radius: 4px;
+    border: 1px solid var(--border-2);
+    color: var(--text-dim);
+  }
+  .stat-pill strong { color: var(--text); font-weight: 500; }
+  .stat-pill.err strong { color: var(--red); }
+
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+
+  /* ── FILTER BAR ── */
+  .filters {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .input-group { position: relative; }
+  .input-group label {
+    position: absolute; top: -8px; left: 10px;
+    font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--accent); background: var(--surface); padding: 0 4px;
+    pointer-events: none;
+  }
+  input[type="text"], select {
+    background: var(--bg); border: 1px solid var(--border-2);
+    color: var(--text); font-family: var(--mono); font-size: 12px;
+    padding: 10px 12px; border-radius: 6px; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input[type="text"]:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245,158,11,.12);
+  }
+  input.input-user { width: 180px; }
+  input.input-search { width: 280px; }
+  select.select-level { width: 130px; appearance: none; cursor: pointer; }
+  select option { background: var(--bg); }
+
+  .btn {
+    font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .5px;
+    padding: 10px 18px; border-radius: 6px; border: none; cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-primary {
+    background: var(--accent); color: #000;
+  }
+  .btn-primary:hover { background: #fbbf24; transform: translateY(-1px); }
+  .btn-ghost {
+    background: transparent; color: var(--text-dim); border: 1px solid var(--border-2);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .auto-refresh {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+    margin-left: auto;
+  }
+  .toggle {
+    width: 36px; height: 20px; border-radius: 10px; border: none; cursor: pointer;
+    background: var(--border-2); position: relative; transition: background .2s;
+  }
+  .toggle.on { background: var(--accent-dim); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--text-dim); transition: transform .2s, background .2s;
+  }
+  .toggle.on::after { transform: translateX(16px); background: var(--accent); }
+
+  /* ── LOG TABLE ── */
+  .table-wrap {
+    flex: 1; overflow: auto;
+    padding: 0;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  thead th {
+    position: sticky; top: 0; z-index: 10;
+    background: #0a0f1a; border-bottom: 1px solid var(--border);
+    padding: 10px 16px; text-align: left;
+    font-family: var(--sans); font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--text-dim); white-space: nowrap;
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background .1s;
+  }
+  tbody tr:hover { background: rgba(245,158,11,.04); }
+  tbody tr.expanded { background: rgba(245,158,11,.04); }
+  td { padding: 10px 16px; vertical-align: top; }
+
+  .col-ts { width: 175px; color: var(--text-dim); font-size: 11px; white-space: nowrap; }
+  .col-level { width: 80px; }
+  .col-user { width: 160px; color: var(--cyan); }
+  .col-service { width: 120px; color: var(--purple); }
+  .col-message { max-width: 320px; }
+  .col-body { max-width: 360px; }
+
+  .level-badge {
+    display: inline-block; font-size: 9px; font-weight: 500; letter-spacing: 1px;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 3px;
+  }
+  .level-info    { background: rgba(59,130,246,.15); color: #60a5fa; border: 1px solid rgba(59,130,246,.25); }
+  .level-warn    { background: rgba(234,179,8,.15);  color: #facc15; border: 1px solid rgba(234,179,8,.25); }
+  .level-error   { background: rgba(239,68,68,.15);  color: #f87171; border: 1px solid rgba(239,68,68,.25); }
+  .level-debug   { background: rgba(168,85,247,.15); color: #c084fc; border: 1px solid rgba(168,85,247,.25); }
+  .level-fatal   { background: rgba(239,68,68,.3);   color: #fca5a5; border: 1px solid rgba(239,68,68,.5); }
+
+  .cell-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .cell-dim { color: var(--text-dim); font-style: italic; }
+
+  /* ── EXPANDED ROW ── */
+  .expand-row td {
+    padding: 0 16px 16px 16px;
+    background: rgba(14, 20, 32, 0.8);
+  }
+  .expand-inner {
+    border: 1px solid var(--border-2); border-radius: 8px; overflow: hidden;
+  }
+  .expand-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .expand-section:last-child { border-bottom: none; }
+  .expand-label {
+    font-family: var(--sans); font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--accent-dim); margin-bottom: 6px;
+  }
+  pre.expand-body {
+    font-family: var(--mono); font-size: 11px; color: var(--text);
+    white-space: pre-wrap; word-break: break-all; line-height: 1.6;
+  }
+
+  /* ── FOOTER / PAGINATION ── */
+  footer {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 28px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .page-info { margin-left: auto; }
+  .btn-page {
+    background: var(--bg); border: 1px solid var(--border-2); color: var(--text-dim);
+    font-family: var(--mono); font-size: 11px; padding: 5px 12px; border-radius: 4px;
+    cursor: pointer; transition: all .15s;
+  }
+  .btn-page:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .btn-page:disabled { opacity: .3; cursor: default; }
+
+  /* ── EMPTY / LOADING ── */
+  .state-msg {
+    text-align: center; padding: 80px 20px;
+    font-family: var(--mono); font-size: 13px; color: var(--text-muted);
+  }
+  .state-msg .big { font-size: 32px; margin-bottom: 12px; opacity: .4; }
+
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid var(--border-2); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── MODAL (detail) ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(8,11,16,.85); backdrop-filter: blur(4px);
+    z-index: 100; place-items: center;
+  }
+  .modal-overlay.open { display: grid; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border-2); border-radius: 12px;
+    width: 680px; max-width: 95vw; max-height: 80vh; overflow-y: auto;
+    padding: 24px;
+    animation: slideUp .2s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(20px); opacity:0; } to { transform: none; opacity:1; } }
+  .modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .modal-title { font-weight: 700; font-size: 16px; }
+  .modal-close {
+    margin-left: auto; background: none; border: none; color: var(--text-dim);
+    cursor: pointer; font-size: 20px; line-height: 1; padding: 4px;
+  }
+  .modal-close:hover { color: var(--text); }
+  .field { margin-bottom: 14px; }
+  .field-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--accent-dim); margin-bottom: 5px;
+  }
+  .field-value {
+    font-family: var(--mono); font-size: 12px; color: var(--text);
+    background: var(--bg); padding: 10px 12px; border-radius: 6px;
+    border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; line-height: 1.6;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 200;
+    font-family: var(--mono); font-size: 12px;
+    background: var(--surface); border: 1px solid var(--border-2);
+    color: var(--text); padding: 10px 16px; border-radius: 8px;
+    opacity: 0; transform: translateY(10px);
+    transition: opacity .2s, transform .2s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: none; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round">
+          <path d="M4 6h16M4 10h16M4 14h10M4 18h7"/>
+        </svg>
+      </div>
+      Log<span>Platform</span>
+    </div>
+    <div class="live-dot" id="liveDot" title="Conexão ativa"></div>
+    <div class="header-stats" id="statsBar">
+      <div class="stat-pill">total <strong id="statTotal">—</strong></div>
+      <div class="stat-pill">24h <strong id="stat24h">—</strong></div>
+      <div class="stat-pill err">erros <strong id="statErr">—</strong></div>
+    </div>
+  </header>
+
+  <!-- FILTERS -->
+  <div class="filters">
+    <div class="input-group">
+      <label>User ID</label>
+      <input class="input-user" type="text" id="filterUser" placeholder="ex: user_123" />
+    </div>
+    <div class="input-group">
+      <label>Busca no body / message</label>
+      <input class="input-search" type="text" id="filterSearch" placeholder="ex: payment failed" />
+    </div>
+    <div class="input-group">
+      <label>Level</label>
+      <select class="select-level" id="filterLevel">
+        <option value="">Todos</option>
+        <option value="debug">debug</option>
+        <option value="info">info</option>
+        <option value="warn">warn</option>
+        <option value="error">error</option>
+        <option value="fatal">fatal</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="search(1)">Buscar</button>
+    <button class="btn btn-ghost" onclick="clearFilters()">Limpar</button>
+    <div class="auto-refresh">
+      <button class="toggle on" id="refreshToggle" onclick="toggleRefresh()" title="Auto-refresh"></button>
+      auto-refresh 10s
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-wrap" id="tableWrap">
+    <table id="logsTable">
+      <thead>
+        <tr>
+          <th class="col-ts">Timestamp</th>
+          <th class="col-level">Level</th>
+          <th class="col-user">User ID</th>
+          <th class="col-service">Service</th>
+          <th class="col-message">Message</th>
+          <th class="col-body">Body</th>
+        </tr>
+      </thead>
+      <tbody id="logsBody">
+        <tr><td colspan="6" class="state-msg"><div class="big">⌛</div>Carregando logs...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span id="footerInfo">—</span>
+    <div class="page-info">
+      <button class="btn-page" id="btnPrev" disabled onclick="changePage(-1)">← anterior</button>
+      &nbsp;pág. <strong id="pageNum">1</strong> de <strong id="pageTotal">1</strong>&nbsp;
+      <button class="btn-page" id="btnNext" disabled onclick="changePage(1)">próxima →</button>
+    </div>
+  </footer>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div id="modalLevelBadge"></div>
+      <div class="modal-title" id="modalTitle"></div>
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+const API = '';  // mesmo host
+let page = 1;
+let totalPages = 1;
+let autoRefresh = true;
+let refreshTimer = null;
+let expandedId = null;
+
+// ── Format ────────────────────────────────────────────────────────────────
+function fmtDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleString('pt-BR', { hour12: false }).replace(',', '');
+}
+
+function levelBadge(l) {
+  return `<span class="level-badge level-${l}">${l}</span>`;
+}
+
+function prettyJson(str) {
+  try { return JSON.stringify(JSON.parse(str), null, 2); }
+  catch { return str; }
+}
+
+function trunc(s, n = 80) {
+  if (!s) return '<span class="cell-dim">—</span>';
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+// ── Fetch stats ───────────────────────────────────────────────────────────
+async function fetchStats() {
+  try {
+    const r = await fetch(`${API}/api/stats`);
+    if (!r.ok) return;
+    const s = await r.json();
+    document.getElementById('statTotal').textContent = Number(s.total).toLocaleString('pt-BR');
+    document.getElementById('stat24h').textContent   = Number(s.last_24h).toLocaleString('pt-BR');
+    document.getElementById('statErr').textContent   = Number(s.errors).toLocaleString('pt-BR');
+  } catch {}
+}
+
+// ── Fetch logs ────────────────────────────────────────────────────────────
+async function search(pg = 1) {
+  page = pg;
+  const userId  = document.getElementById('filterUser').value.trim();
+  const searchT = document.getElementById('filterSearch').value.trim();
+  const level   = document.getElementById('filterLevel').value;
+
+  const params = new URLSearchParams({ page, limit: 50 });
+  if (userId)  params.set('userId', userId);
+  if (searchT) params.set('search', searchT);
+  if (level)   params.set('level', level);
+
+  const tbody = document.getElementById('logsBody');
+  tbody.innerHTML = `<tr><td colspan="6" class="state-msg"><span class="spinner"></span></td></tr>`;
+
+  try {
+    const r = await fetch(`${API}/api/logs?${params}`);
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    renderTable(data);
+    updateFooter(data);
+    fetchStats();
+    document.getElementById('liveDot').style.background = 'var(--green)';
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6" class="state-msg"><div class="big">⚠</div>${e.message}</td></tr>`;
+    document.getElementById('liveDot').style.background = 'var(--red)';
+  }
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('logsBody');
+  if (!data.data.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="state-msg"><div class="big">∅</div>Nenhum log encontrado</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  for (const row of data.data) {
+    const tr = document.createElement('tr');
+    tr.dataset.id = row.id;
+    tr.innerHTML = `
+      <td class="col-ts">${fmtDate(row.timestamp)}</td>
+      <td class="col-level">${levelBadge(row.level)}</td>
+      <td class="col-user"><span class="cell-truncate" style="max-width:150px;display:block">${row.user_id || '<span class="cell-dim">—</span>'}</span></td>
+      <td class="col-service"><span class="cell-truncate" style="max-width:110px;display:block">${row.service || '<span class="cell-dim">—</span>'}</span></td>
+      <td class="col-message"><span class="cell-truncate" style="max-width:310px;display:block">${trunc(row.message, 90)}</span></td>
+      <td class="col-body"><span class="cell-truncate" style="max-width:350px;display:block">${trunc(row.body, 90)}</span></td>
+    `;
+    tr.addEventListener('click', () => openModal(row));
+    tbody.appendChild(tr);
+  }
+}
+
+function updateFooter(data) {
+  totalPages = data.pages || 1;
+  document.getElementById('footerInfo').textContent =
+    `${Number(data.total).toLocaleString('pt-BR')} log(s) encontrado(s)`;
+  document.getElementById('pageNum').textContent   = data.page;
+  document.getElementById('pageTotal').textContent = totalPages;
+  document.getElementById('btnPrev').disabled = data.page <= 1;
+  document.getElementById('btnNext').disabled = data.page >= totalPages;
+}
+
+function changePage(dir) {
+  const np = page + dir;
+  if (np < 1 || np > totalPages) return;
+  search(np);
+}
+
+function clearFilters() {
+  document.getElementById('filterUser').value   = '';
+  document.getElementById('filterSearch').value = '';
+  document.getElementById('filterLevel').value  = '';
+  search(1);
+}
+
+// ── Auto-refresh ───────────────────────────────────────────────────────────
+function toggleRefresh() {
+  autoRefresh = !autoRefresh;
+  document.getElementById('refreshToggle').classList.toggle('on', autoRefresh);
+  scheduleRefresh();
+}
+
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  if (autoRefresh) refreshTimer = setTimeout(() => { search(page); scheduleRefresh(); }, 10000);
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function openModal(row) {
+  document.getElementById('modalLevelBadge').innerHTML = levelBadge(row.level);
+  document.getElementById('modalTitle').textContent = row.message || '(sem mensagem)';
+
+  const fields = [
+    ['ID',        row.id],
+    ['Timestamp', fmtDate(row.timestamp)],
+    ['User ID',   row.user_id  || '—'],
+    ['Service',   row.service  || '—'],
+    ['Body',      prettyJson(row.body)],
+    ['Metadata',  prettyJson(row.metadata)],
+  ];
+
+  document.getElementById('modalBody').innerHTML = fields.map(([l, v]) => `
+    <div class="field">
+      <div class="field-label">${l}</div>
+      <pre class="field-value">${escHtml(v)}</pre>
+    </div>
+  `).join('');
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModalDirect(); });
+
+// Enter key triggers search
+document.getElementById('filterUser').addEventListener('keydown',   e => e.key==='Enter' && search(1));
+document.getElementById('filterSearch').addEventListener('keydown', e => e.key==='Enter' && search(1));
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+search(1);
+scheduleRefresh();
+</script>
+</body>
+</html>
